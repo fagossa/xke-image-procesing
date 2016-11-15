@@ -1,4 +1,4 @@
-Functional Image processing
+Functional Image processing [![Build Status](https://travis-ci.org/fagossa/xke-image-procesing.svg?branch=master)](https://travis-ci.org/fagossa/xke-image-procesing)
 ======
 
 ## REPL
