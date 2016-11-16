@@ -4,6 +4,7 @@ cache:
     - $HOME/.sbt
     - $HOME/.ivy2
 
+
 language: scala
 
 scala:
