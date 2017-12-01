@@ -6,18 +6,19 @@ import fr.xebia.image.TestFactory._
 import fr.xebia.image.export.{CharValueGradientOnHeight, GrayGradientOnHeight, ImageWriter, Rainbow}
 import org.scalatest.concurrent.{PatienceConfiguration, ScalaFutures}
 import org.scalatest.time.{Seconds, Span}
-import org.scalatest.{FunSpec, Matchers}
+import org.scalatest.{Matchers, WordSpec}
 
-class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures {
+import scala.util.Success
 
-  describe("A segmentation functor") {
+class ImageFunctorSpec extends WordSpec with Matchers with ScalaFutures {
 
-    describe("handling hardcoded images") {
+  "A segmentation functor" which {
 
-      it("should replace '#' by '@'") {
+    "handles hardcoded images" must {
+
+      "replace '#' by '@'" in {
         // given an image
-        val functor = anImageFunctorFrom(
-          """
+        val functor = anImageFunctorFrom("""
             |......###........
             |...###...##......
             |..##.......##....
@@ -52,9 +53,8 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
         )
       }
 
-      it("should detect a missing first match in the image") {
-        val aFunctor = anImageFunctorFrom(
-          """|......###........
+      "detect a missing first match in the image" in {
+        val aFunctor = anImageFunctorFrom("""|......###........
             |...###...##......
             |..##.......##....
             |..############...
@@ -68,9 +68,8 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
         aFunctor.firstThatMatches("&") shouldNot be(defined)
       }
 
-      it("should apply threshold on a matching predicate") {
-        val anImageFunctor = anImageFunctorFrom(
-          """
+      "apply threshold on a matching predicate" in {
+        val anImageFunctor = anImageFunctorFrom("""
             |-#--#----
             |-#--#--#-
             |-#--#--#-
@@ -84,20 +83,16 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
             |---------
           """.stripMargin
         )
-        anImageFunctor.threshold(
-          predicate = (p) => p == "#",
-          replaceBy = "-") shouldBe expectedContent
+        anImageFunctor.threshold(predicate = (p) => p == "#", replaceBy = "-") shouldBe expectedContent
       }
 
-      it("should not apply threshold if none match the predicate") {
+      "not apply threshold if none match the predicate" in {
         val anImageFunctor = anImageFunctorFrom("-#--#----")
         val expectedContent = anImageFunctorFrom("-#--#----")
-        anImageFunctor.threshold(
-          predicate = (p) => p == "@",
-          replaceBy = "-") shouldBe expectedContent
+        anImageFunctor.threshold(predicate = (p) => p == "@", replaceBy = "-") shouldBe expectedContent
       }
 
-      it("should propagate a front from a simple image") {
+      "propagate a front from a simple image" in {
         val aContent =
           """
             |-#--#----
@@ -111,18 +106,18 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
 
     }
 
-    describe("reading files") {
+    "reads files" must {
 
-      it("should detect unconnected elements in an image from disk") {
-        val aFunctor = ImageBuilder.StringImageFromFile("/google.txt").get
+      "detect unconnected elements in an image from disk" in {
+        val aFunctor = ImageBuilder.StringImageFromFile("/google.txt")
         aFunctor.countConnectedElements(
           contentValue = "#",
           emptyValue = "."
         ) shouldBe 6
       }
 
-      it("should detect the right amt of characters from a file containing 'xebia' ") {
-        val aFunctor = ImageBuilder.StringImageFromFile("/xebia.txt").get
+      "detect the right amt of characters from a file containing 'xebia' " in {
+        val aFunctor = ImageBuilder.StringImageFromFile("/xebia.txt")
         aFunctor.countConnectedElements(
           contentValue = "#",
           emptyValue = "."
@@ -131,10 +126,9 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
 
     }
 
-    describe("executing front propagation") {
+    "executes front propagation" must {
 
-      val anImageFunctor = anImageFunctorFrom(
-        """
+      val anImageFunctor = anImageFunctorFrom("""
           |......###........
           |...###...##......
           |..##.......##....
@@ -147,14 +141,13 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
           |.................
         """.stripMargin)
 
-      it("should propagate a front from a specified seed") {
+      "propagate a front from a specified seed" in {
         // given
         val specialChar = "@"
         val seed = Position(7, 0)
 
         // when
-        val anImageFunctor = anImageFunctorFrom(
-          """
+        val anImageFunctor = anImageFunctorFrom("""
             |......###........
             |...###...##......
             |..##.......##....
@@ -168,14 +161,14 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
           """.stripMargin)
 
         val segmentedPositions = anImageFunctor.propagateFront(
-          seeds = anImageFunctor.neighborsAndSelf(seed),
+          seed = seed,
           searchedValue = "#",
           markWith = specialChar
         )
         val segmentedImage = anImageFunctor.replace(segmentedPositions, specialChar)
 
         // then
-        segmentedImage shouldBe anImageFunctorFrom(
+        segmentedImage.image.content shouldBe anImageFunctorFrom(
           """
             |......@@@........
             |...@@@...@@......
@@ -188,10 +181,10 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
             |.....@@@@........
             |.................
           """.stripMargin
-        )
+        ).image.content
       }
 
-      it("should propagate a front from the first value that matches") {
+      "propagate a front from the first value that matches" in {
         // given
         val firstFrontFunctor = anImageFunctor
         val firstSeed = aSeedThatMatches(firstFrontFunctor, Position(6, 0), "#")
@@ -229,9 +222,8 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
         )
       }
 
-      it("should detect unconnected elements in an image") {
-        val anImageFunctor = anImageFunctorFrom(
-          """
+      "detect unconnected elements in an image" in {
+        val anImageFunctor = anImageFunctorFrom("""
             |.................
             |...##......##....
             |...##......##....
@@ -253,15 +245,14 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
 
   }
 
-  describe("An exporter mechanism") {
+  "An exporter mechanism" must {
     import scala.concurrent.ExecutionContext.Implicits.global
     val timeout = PatienceConfiguration.Timeout(Span(2, Seconds))
 
-    it("should read and write a String image") {
+    "read and write a String image" in {
       import java.nio.file.{Files, Paths}
       val aFileName: String = "output.png"
-      val anImageFunctor = anImageFunctorFrom(
-        """
+      val anImageFunctor = anImageFunctorFrom("""
           |.................
           |...##......##....
           |...##......##....
@@ -274,21 +265,17 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
           |.................
         """.stripMargin)
 
-      val eventualResponse = ImageWriter.writeToImage(
-        aFileName,
-        anImageFunctor.rawImage,
-        (pixel: String) => pixel == "#",
-        GrayGradientOnHeight)
+      val eventualResponse =
+        ImageWriter.writeToImage(aFileName, anImageFunctor.image, (pixel: String) => pixel == "#", GrayGradientOnHeight)
       whenReady(eventualResponse, timeout) { response =>
         Files.exists(Paths.get(aFileName))
       }
     }
 
-    it("should read and write a String image using searched char as color value") {
+    "read and write a String image using searched char as color value" in {
       import java.nio.file.{Files, Paths}
       val aFileName: String = "outputValue.png"
-      val anImageFunctor = anImageFunctorFrom(
-        """
+      val anImageFunctor = anImageFunctorFrom("""
           |.................
           |...¨¨......¨¨....
           |...¨¨......¨¨....
@@ -301,28 +288,30 @@ class ImageProcessingFunctorSpec extends FunSpec with Matchers with ScalaFutures
           |.................
         """.stripMargin)
 
-      val eventualResponse = ImageWriter.writeToImage(
-        aFileName,
-        anImageFunctor.rawImage,
-        (pixel: String) => pixel != ".",
-        CharValueGradientOnHeight)
+      val eventualResponse = ImageWriter.writeToImage(aFileName,
+                                                      anImageFunctor.image,
+                                                      (pixel: String) => pixel != ".",
+                                                      CharValueGradientOnHeight)
       whenReady(eventualResponse, timeout) { response =>
         Files.exists(Paths.get(aFileName))
       }
     }
 
-    it("should read and write an Int image") {
+    "read and write an Int image" in {
       import java.nio.file.{Files, Paths}
       val aFileName = "outputColor.png"
-      val aNumericImageFunctor = ImageBuilder.IntImageFromFile("/input.txt").get
-      val eventualResponse = ImageWriter.writeToImage(
-        aFileName,
-        aNumericImageFunctor.rawImage,
-        (pixel: Int) => pixel == 255,
-        Rainbow)
-      whenReady(eventualResponse, timeout) { response =>
-        Files.exists(Paths.get(aFileName))
+      val aNumericImageFunctor = ImageBuilder.IntImageFromFile("/input.txt")
+      aNumericImageFunctor match {
+        case Success(func) =>
+          val eventualResponse =
+            ImageWriter.writeToImage(aFileName, func.image, (pixel: Int) => pixel == 255, Rainbow)
+          whenReady(eventualResponse, timeout) { response =>
+            Files.exists(Paths.get(aFileName))
+          }
+        case _ =>
+          fail("Error parsing int image")
       }
+
     }
 
   }

@@ -1,23 +1,44 @@
 package fr.xebia.image.core
 
+import fr.xebia.image.core.RawImage.Matrix
+
 import scala.annotation.tailrec
+import scala.util.{Failure, Success, Try}
 
 case class Position(x: Int, y: Int) extends Ordered[Position] {
   override def toString: String = s"($x,$y)"
 
   import scala.math.Ordered.orderingToOrdered
-  override def compare(that: Position): Int = (this.x, this.y) compare (that.x, that.y)
+
+  override def compare(that: Position): Int = (this.x, this.y) compare(that.x, that.y)
+}
+
+object RawImage {
+
+  type Matrix[U] = List[List[U]]
+
+  def buildFrom[T](content: Matrix[T]): Try[RawImage[T]] = {
+    content match {
+      case Nil =>
+        Failure(new IllegalArgumentException(s"Empty content is not supported"))
+
+      case list if list.map(_.size).distinct.size != 1 =>
+        Failure(new IllegalArgumentException(s"Only squared matrix are supported"))
+
+      case _ =>
+        Success(new RawImage(content))
+    }
+  }
+
 }
 
 /**
-  * Generic image, as a list of list of pixels.
+  * Generic image, as a matrix of pixels.
   *
   * @param content list of list of pixels.
-  * @tparam U the type of the pixel value.
+  * @tparam T the type of the pixel value.
   */
-case class RawImage[U](content: List[List[U]]) {
-  require(content.nonEmpty, "Empty image")
-  require(content.map(_.size).distinct.size == 1, "Not all rows have the same size")
+final case class RawImage[T] private(content: Matrix[T]) {
 
   val width = content.head.size
 
@@ -26,39 +47,39 @@ case class RawImage[U](content: List[List[U]]) {
   /**
     * Get the first element that matches following a left-right / up-down strategy
     */
-  def firstThatMatches(searched: U): Option[Position] = {
-    val zipped: List[(Int, List[U])] = content.indices
-      .toList
-      .zip(content)
+  def firstThatMatches(searched: T): Option[Position] = {
+    val zipped: List[(Int, List[T])] = content.indices.toList.zip(content)
     zipped
-      .find { case (y, xValues) => xValues.contains(searched) }
+      .find { case (_, xValues) => xValues.contains(searched) }
       .map { case (y, xValues) => Position(xValues.indexOf(searched), y) }
   }
 
   /**
     * Replace the pixels at the specified position by the specified pixel value.
+    *
     * @param neighborList the position where pixel value must be replaced
-    * @param value the new pixel value to erase the specified neighborList with
+    * @param value        the new pixel value to erase the specified neighborList with
     * @return an updated image with specified pixels replaced by specified value.
     */
-  def replace(neighborList: List[Position], value: U): RawImage[U] = {
+  def replace(neighborList: List[Position], value: T): RawImage[T] = {
     @tailrec
-    def go(updatedImage: RawImage[U], remainingNeighbor: List[Position]): RawImage[U] = {
+    def go(updatedImage: RawImage[T], remainingNeighbor: List[Position]): RawImage[T] = {
       remainingNeighbor match {
         case Nil =>
           updatedImage
 
         case currentPos :: remainingPositions =>
           go(
-            copy(content = replaceValueInContent(currentPos, updatedImage, value)),
+            new RawImage[T](content = replaceValueInContent(currentPos, updatedImage, value)),
             remainingPositions
           )
       }
     }
+
     go(this, neighborList)
   }
 
-  private def replaceValueInContent(position: Position, currentImage: RawImage[U], newValue: U): List[List[U]] = {
+  private def replaceValueInContent(position: Position, currentImage: RawImage[T], newValue: T): Matrix[T] = {
     val valueReplaced = currentImage.content(position.y).updated(position.x, newValue)
     currentImage.content.updated(
       position.y,
@@ -81,8 +102,7 @@ case class RawImage[U](content: List[List[U]]) {
     neigh += center.copy(y = center.y - 1, x = center.x + 1)
     neigh += center.copy(x = center.x + 1)
 
-    neigh
-      .toList
+    neigh.toList
       .filter(pos => pos.x >= 0 && pos.y >= 0)
       .filter(pos => pos.x < width && pos.y < height)
   }
@@ -94,6 +114,6 @@ case class RawImage[U](content: List[List[U]]) {
   def neighborsAndSelf(center: Position): List[Position] =
     neighborsOnly(center) :+ center
 
-  def at(pos: Position): U = content(pos.y)(pos.x)
+  def at(pos: Position): T = content(pos.y)(pos.x)
 
 }
